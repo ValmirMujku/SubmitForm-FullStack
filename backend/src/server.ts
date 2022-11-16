@@ -1,0 +1,89 @@
+import express from "express";
+import db from "./db";
+import cors from "cors";
+import FormInstance from "./model";
+import bodyParser from "body-parser";
+import * as bcrypt from "bcrypt";
+
+const port = 3400;
+const app = express();
+
+app.set("view engine", "ejs");
+app.use(bodyParser.json());
+app.use(express.json());
+
+app.use(
+  cors({
+    origin: "*",
+  })
+);
+
+function createPassHash(pass: string) {
+  bcrypt.genSalt(10).then((salt) => {
+    return bcrypt.hash(pass, salt);
+  });
+}
+
+createPassHash("333");
+
+//GET-METHOD-SERVER
+app.get("/forms", async (req, res) => {
+  const record = await FormInstance.findAll();
+  return res.status(201).json(record);
+});
+
+//POST-METHOD-SERVER
+app.post("/forms", async (req, res) => {
+  try {
+    var salt = await bcrypt.genSalt(10);
+    req.body.password = await bcrypt.hash(req.body.password, salt);
+    const record = await FormInstance.create(req.body);
+    return res.status(201).json(record);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json(error);
+  }
+});
+
+//PUT-METHOD-SERVER
+app.put(`/forms/:id`, async (req, res) => {
+  try {
+    var salt = await bcrypt.genSalt(10);
+    req.body.password = await bcrypt.hash(req.body.password, salt);
+
+    const record = await FormInstance.update(
+      { email: req.body.email, password: req.body.password },
+      {
+        where: {
+          id: req.body.id,
+        },
+      }
+    );
+
+    return res.status(201).json({ record, msg: "Successfully UPDATED" });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json(error);
+  }
+});
+
+//DELETE-METHOD-SERVER
+app.delete(`/forms/:id`, async (req, res) => {
+  try {
+    const record = await FormInstance.destroy({
+      where: {
+        id: req.body.id,
+      },
+    });
+    return res.status(201).json(req.body.id);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send("RECORD DELETED");
+  }
+});
+
+app.listen(port, () => {
+  db.authenticate().then(() => {
+    console.log("Connected and synced to db...."); //same si ajo sync, mi kriju tabelat
+  });
+});
